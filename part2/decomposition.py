@@ -75,33 +75,4 @@ def cholesky_decomposition(A):
     return L
 
 
-# =============================================================================
-# PHẦN KIỂM CHỨNG (Chỉ chạy khi thực thi trực tiếp file này)
-# =============================================================================
-if __name__ == "__main__":
-    print("Đang kiểm tra thuật toán Phân rã Cholesky...\n")
 
-    # 1. Tạo ma trận SPD 4×4 từ ma trận ngẫu nhiên: A = X * X^T
-    #    (Tích X*X^T luôn cho kết quả là ma trận SPD)
-    np.random.seed(42)  # Cố định seed để kết quả tái lập được (reproducible)
-    X = np.random.rand(4, 4)
-    A_spd = np.dot(X, X.T)
-
-    # 2. Phân rã bằng hàm tự triển khai
-    L_custom = cholesky_decomposition(A_spd.tolist())
-
-    # 3. Phân rã bằng hàm chuẩn của NumPy (đối chiếu)
-    L_numpy = np.linalg.cholesky(A_spd)
-
-    # 4. In kết quả hai phương pháp
-    print("Ma trận L (Tự code):")
-    for row in L_custom:
-        print([f"{val:.4f}" for val in row])
-
-    print("\nMa trận L (NumPy):")
-    for row in L_numpy.tolist():
-        print([f"{val:.4f}" for val in row])
-
-    # 5. So sánh kết quả (tolerance mặc định: atol=1e-8, rtol=1e-5)
-    is_correct = np.allclose(L_custom, L_numpy)
-    print(f"\n=> Kết quả so sánh (True là code chuẩn): {is_correct}")
