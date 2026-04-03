@@ -1,6 +1,17 @@
 import math
 import numpy as np
+"""
+Description:
+-qr_factorization_gram_schmidt(A):Triển khai phân rã ma trận A = QR
+Sử dụng quá trình Gram-Schmidt cổ điển để tạo ra ma trận trực giao Q và ma trận tam giác trên R
 
+-eigen_qr_iteration(A, iterations=500):Thuật toán lặp để tìm các trị riêng (eigenvalues) và vectơ riêng (eigenvectors)
+
+-diagonalize_matrix(A):Hàm tổng hợp để thực hiện chéo hóa hoàn chỉnh dưới dạng A = PDP^{-1}
+
+-test_diagonalization(A):Hàm kiểm chứng độ chính xác của thuật toán.
+So sánh trị riêng tự tính với hàm tiêu chuẩn np.linalg.eig của NumPy.
+"""
 def qr_factorization_gram_schmidt(A):
     """ cài đặt phân rã QR bằng Gram-Schmidt"""
     n, m = A.shape
