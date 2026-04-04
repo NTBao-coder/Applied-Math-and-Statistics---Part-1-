@@ -4,58 +4,97 @@ import numpy as np
 Description:
 -qr_factorization_gram_schmidt(A):Triển khai phân rã ma trận A = QR
 Sử dụng quá trình Gram-Schmidt cổ điển để tạo ra ma trận trực giao Q và ma trận tam giác trên R
-
+-matrix_multiply: Hàm nhân hai ma trận A (n x m) và B (m x p)
 -eigen_qr_iteration(A, iterations=500):Thuật toán lặp để tìm các trị riêng (eigenvalues) và vectơ riêng (eigenvectors)
-
+matrix_transpose:Tính ma trận chuyển vị của P
+def create_diagonal_matrix(lambdas):Tạo ma trận đường chéo D từ danh sách trị riêng
 -diagonalize_matrix(A):Hàm tổng hợp để thực hiện chéo hóa hoàn chỉnh dưới dạng A = PDP^{-1}
-
 -test_diagonalization(A):Hàm kiểm chứng độ chính xác của thuật toán.
 So sánh trị riêng tự tính với hàm tiêu chuẩn np.linalg.eig của NumPy.
 """
 def qr_factorization_gram_schmidt(A):
     """ cài đặt phân rã QR bằng Gram-Schmidt"""
-    n, m = A.shape
-    Q = np.zeros((n, m))
-    R = np.zeros((m, m))
+    n = len(A)          
+    m = len(A[0])
+
+    Q = [[0.0 for _ in range(m)] for _ in range(n)]
+
+    R = [[0.0 for _ in range(m)] for _ in range(m)]
     for k in range(m):
-        v = A[:, k].copy()
+        v = [A[i][k] for i in range(n)]
         for i in range(k):
            
-            R[i, k] = np.dot(Q[:, i], A[:, k])
-            v = v - R[i, k] * Q[:, i]
+            dot_product = sum(Q[row][i] * A[row][k] for row in range(n))
+            R[i][k] = dot_product
+            for row in range(n):
+                v[row] = v[row] - R[i][k] * Q[row][i]
         
        
-        norm_v = np.sqrt(np.sum(v**2))
+        norm_v = math.sqrt(sum(x**2 for x in v))
         if norm_v > 1e-10:
-            R[k, k] = norm_v
-            Q[:, k] = v / R[k, k]
+            R[k][k] = norm_v
+            for row in range(n):
+                Q[row][k] = v[row] / R[k][k]
     return Q, R
 
-def  eigen_qr_iteration(A, iterations=500):
+def matrix_multiply(A, B):
+    """Hàm nhân hai ma trận A (n x m) và B (m x p)"""
+    n = len(A)
+    m = len(A[0])
+    p = len(B[0])
+    # Khởi tạo ma trận kết quả toàn số 0
+    C = [[0.0 for _ in range(p)] for _ in range(n)]
+    for i in range(n):
+        for j in range(p):
+            for k in range(m):
+                C[i][j] += A[i][k] * B[k][j]
+    return C
+
+def eigen_qr_iteration(A, iterations=500):
     """Thuật toán QR lặp để tìm trị riêng và vector riêng """
-    n = A.shape[0]
-    V = np.eye(n)
-    Ak = A.copy().astype(float)
+    n = len(A)
+    V = [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
+    Ak = [row[:] for row in A]
     for _ in range(iterations):
         Q, R =  qr_factorization_gram_schmidt(Ak) 
-        Ak = R @ Q
-        V = V @ Q
-    return np.diag(Ak), V
+        Ak = matrix_multiply(R, Q)
+        V = matrix_multiply(V, Q)
+    # trị riêng (là các phần tử trên đường chéo của Ak)
+    eigenvalues = [Ak[i][i] for i in range(n)]    
+    return eigenvalues, V
+
+def matrix_transpose(P):
+    """Tính ma trận chuyển vị của P"""
+    n = len(P)
+    m = len(P[0])
+    # Tạo ma trận mới m hàng, n cột
+    return [[P[j][i] for j in range(n)] for i in range(m)]
+
+def create_diagonal_matrix(lambdas):
+    """Tạo ma trận đường chéo D từ danh sách trị riêng"""
+    n = len(lambdas)
+    D = [[0.0 for _ in range(n)] for _ in range(n)]
+    for i in range(n):
+        D[i][i] = lambdas[i]
+    return D
+
 def diagonalize_matrix(A):
     """Chéo hóa ma trận vuông: A = P * D * P^-1 """
-    if A.shape[0] != A.shape[1]:
-        return "Lỗi: Chỉ chéo hóa ma trận vuông "
+    n = len(A)
+    m = len(A[0])
+    
+    # Kiểm tra ma trận vuông
+    if n != m:
+        return "Lỗi: Chỉ chéo hóa ma trận vuông"
 
     # 1. Tìm D (giá trị riêng) và P (vector riêng) 
     lambdas, P = eigen_qr_iteration(A)
-    D = np.diag(lambdas)
+    D = create_diagonal_matrix(lambdas)
     
     # 2. Tính P_inv (Vì P từ QR là ma trận trực giao nên P_inv = P^T)
-    P_inv = P.T 
+    P_inv = matrix_transpose(P)
     
     return P, D, P_inv
-
-
 
 def test_diagonalization(A):
     print("--- KIỂM CHỨNG CHÉO HÓA ---")
