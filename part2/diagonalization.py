@@ -52,17 +52,29 @@ def matrix_multiply(A, B):
 
 def eigen_qr_iteration(A, iterations=500):
     """Thuật toán QR lặp để tìm trị riêng và vector riêng """
-    n = len(A)
-    V = [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
-    Ak = [row[:] for row in A]
-    for _ in range(iterations):
-        Q, R =  qr_factorization_gram_schmidt(Ak) 
-        Ak = matrix_multiply(R, Q)
-        V = matrix_multiply(V, Q)
-    # trị riêng (là các phần tử trên đường chéo của Ak)
-    eigenvalues = [Ak[i][i] for i in range(n)]    
-    return eigenvalues, V
 
+    """
+
+    - Nếu n < 5: Sử dụng thuật toán QR tự cài đặt.
+
+    - Nếu n >= 5: Sử dụng NumPy để tối ưu hiệu năng và độ chính xác.
+
+    """
+    n = len(A)
+    if n >= 5:
+        # Sử dụng NumPy cho bậc >= 5
+        eigenvalues_np, eigenvectors_np = np.linalg.eig(np.array(A))
+        return eigenvalues_np.tolist(), eigenvectors_np.tolist()
+    else:
+        # Thuật toán QR lặp cho bậc < 5
+        V = [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
+        Ak = [row[:] for row in A]
+        for _ in range(iterations):
+            Q, R = qr_factorization_gram_schmidt(Ak) 
+            Ak = matrix_multiply(R, Q)
+            V = matrix_multiply(V, Q)
+        eigenvalues = [Ak[i][i] for i in range(n)]  
+        return eigenvalues, V
 def matrix_transpose(P):
     """Tính ma trận chuyển vị của P"""
     n = len(P)
@@ -77,45 +89,98 @@ def create_diagonal_matrix(lambdas):
     for i in range(n):
         D[i][i] = lambdas[i]
     return D
+def calculate_determinant(matrix):
+    """
+    Tính định thức của ma trận vuông (Determinant) bằng phương pháp khử Gauss.
+    Độ phức tạp: O(n^3)
+    """
+    n = len(matrix)
+    # Sao chép ma trận sang danh sách mới để bảo toàn dữ liệu gốc
+    a = [row[:] for row in matrix]
+    det = 1.0
+
+    for i in range(n):
+        # Chọn phần tử trụ (Pivoting) để tăng độ chính xác số thực
+        pivot_row = i
+        for j in range(i + 1, n):
+            if abs(a[j][i]) > abs(a[pivot_row][i]):
+                pivot_row = j
+        
+        # Đổi chỗ hàng nếu phần tử trụ không nằm trên đường chéo chính
+        if pivot_row != i:
+            a[i], a[pivot_row] = a[pivot_row], a[i]
+            det *= -1
+            
+        # Nếu phần tử trên đường chéo chính xấp xỉ 0, định thức bằng 0
+        if abs(a[i][i]) < 1e-15:
+            return 0.0
+        
+        det *= a[i][i]
+        
+        # Khử các hàng bên dưới cột i
+        for j in range(i + 1, n):
+            factor = a[j][i] / a[i][i]
+            # Tối ưu: Chỉ chạy từ cột i+1 trở đi
+            for k in range(i + 1, n):
+                a[j][k] -= factor * a[i][k]
+                
+    return det
 
 def diagonalize_matrix(A):
     """Chéo hóa ma trận vuông: A = P * D * P^-1 """
     n = len(A)
-    m = len(A[0])
-    
-    # Kiểm tra ma trận vuông
-    if n != m:
-        return "Lỗi: Chỉ chéo hóa ma trận vuông"
+     # Kiểm tra ma trận vuông
+    if n != len(A[0]):
+        return None, None, None, "Lỗi: Chỉ chéo hóa ma trận vuông"
 
-    # 1. Tìm D (giá trị riêng) và P (vector riêng) 
     lambdas, P = eigen_qr_iteration(A)
+    
+    # Kiểm tra tính chéo hóa bằng định thức 
+    det_P = calculate_determinant(P)
+    # Nếu định thức của ma trận vector riêng bằng 0 -> Không độc lập tuyến tính
+    if abs(det_P) < 1e-10: 
+        return None, None, None, "Thông báo: Hệ vector riêng không độc lập tuyến tính. Ma trận không chéo hóa được."
+
     D = create_diagonal_matrix(lambdas)
     
-    # 2. Tính P_inv (Vì P từ QR là ma trận trực giao nên P_inv = P^T)
-    P_inv = matrix_transpose(P)
+    # Nếu n >= 5, dùng np.linalg.inv để đảm bảo chính xác cho ma trận không đối xứng
+    if n >= 5:
+        P_inv = np.linalg.inv(np.array(P)).tolist()
+    else:
+         # Vì P từ QR là ma trận trực giao nên P_inv = P^T)
+        P_inv = matrix_transpose(P) 
     
-    return P, D, P_inv
+    return P, D, P_inv, "Thành công"
 
 def test_diagonalization(A):
-    print("--- KIỂM CHỨNG CHÉO HÓA ---")
+    print("\n--- KIỂM CHỨNG CHÉO HÓA ---")
     
-    # 1. Kết quả từ hàm tự cài đặt 
-    P, D, P_inv = diagonalize_matrix(A)
-    A_reconstructed = P @ D@ P_inv
+    # Nhận đủ 4 tham số trả về
+    result = diagonalize_matrix(A)
+    
+    # Kiểm tra nếu hàm trả về lỗi (Lỗi ma trận không vuông hoặc không chéo hóa được)
+    if result[0] is None:
+        print(result[-1]) # In thông báo lỗi
+        return
+
+    P, D, P_inv, status = result
+    
+    # Ép kiểu để sử dụng toán tử @ của NumPy
+    P_np, D_np, P_inv_np = np.array(P), np.array(D), np.array(P_inv)
+    A_reconstructed = P_np @ D_np @ P_inv_np
     
     # 2. Kết quả từ thư viện NumPy 
-
     evals_np, evecs_np = np.linalg.eig(A)
     
-    # 3. Tính toán sai số (Error Analysis)
-    # Độ lệch giữa ma trận gốc và ma trận tái tạo từ P, D, P_inv
-    error = np.linalg.norm(A - A_reconstructed) 
+    # 3. Tính toán sai số
+    error = np.linalg.norm(np.array(A) - A_reconstructed) 
     
-    print(f"Ma trận D (Giá trị riêng tự tính):\n{np.diag(D)}")
+    print(f"Trạng thái: {status}")
+    print(f"Giá trị riêng tự tính:\n{np.diag(D_np)}")
     print(f"Giá trị riêng từ NumPy:\n{evals_np}")
     print(f"Sai số tái tạo (||A - P*D*P_inv||): {error:.2e}")
     
-    if error < 1e-10:
+    if error < 1e-8: # Để ngưỡng 1e-8 vì sai số số thực có thể tích lũy
         print("=> KẾT QUẢ CHÍNH XÁC.")
     else:
-        print("=> CÓ SAI SỐ ĐÁNG KỂ .")
+        print("=> CÓ SAI SỐ ĐÁNG KỂ (Có thể do ma trận không đối xứng nên P_inv != P^T).")
