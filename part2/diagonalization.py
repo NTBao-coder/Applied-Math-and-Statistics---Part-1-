@@ -143,12 +143,8 @@ def diagonalize_matrix(A):
 
     D = create_diagonal_matrix(lambdas)
     
-    # Nếu n >= 5, dùng np.linalg.inv để đảm bảo chính xác cho ma trận không đối xứng
-    if n >= 5:
-        P_inv = np.linalg.inv(np.array(P)).tolist()
-    else:
-         # Vì P từ QR là ma trận trực giao nên P_inv = P^T)
-        P_inv = matrix_transpose(P) 
+    # Vì P từ QR là ma trận trực giao nên P_inv = P^T)
+    P_inv = matrix_transpose(P) 
     
     return P, D, P_inv, "Thành công"
 
