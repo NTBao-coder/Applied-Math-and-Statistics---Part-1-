@@ -6,7 +6,7 @@ Description:
 
     Phân loại test cases:
         - Tests 1-5 : Kiểm tra tính đúng đắn (Correctness Tests)
-        - Tests 6-8 : Kiểm tra các trường hợp biên (Edge Case Tests)
+        - Tests 6-9 : Kiểm tra các trường hợp biên (Edge Case Tests)
 
     Phương pháp kiểm chứng:
         1. So sánh L với kết quả biết trước (hand-calculated)
