@@ -33,6 +33,10 @@ def cholesky_decomposition(A):
     """
     n = len(A)
 
+    # EDGE CASE: Kiểm tra ma trận vuông
+    if n == 0 or len(A[0]) != n:
+        raise ValueError("Lỗi: Ma trận không phải là ma trận vuông.")
+
     # EDGE CASE: Kiểm tra tính đối xứng của ma trận
     for i in range(n):
         for j in range(n):
