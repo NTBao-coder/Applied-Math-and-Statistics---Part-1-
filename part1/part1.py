@@ -1,5 +1,9 @@
 import math
+import sys
 import numpy as np
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 # Hàm khử Gauss (trả về ma trận tam giác trên)
 def gaussian_elimination(A, b):
@@ -55,7 +59,7 @@ def backward_elimination(M, pivot_cols):
     for i in range(len(pivot_cols) - 1, -1, -1):
         r, c = i, pivot_cols[i] # Dòng r, cột c chứa pivot
         pivot_val = A_rref[r][c]
-        A_rref[r] = [x / pivot_val for x in A_rref[r]]
+        A_rref[r] = [x / pivot_val for x in A_rref[r]] # Chia dòng r cho pivot_val
         
         for k in range(r - 1, -1, -1):
             factor = A_rref[k][c]
@@ -99,7 +103,7 @@ def solve_infinite_solutions(M_rref, pivot_cols, m_vars, epsilon=1e-12):
         if i < n_rows:
             x_particular[p_col] = M_rref[i][m_vars]
             
-    # 3. Tìm hệ nghiệm cơ bản
+    # 3. Tìm hệ nghiệm cơ bản   
     # Mỗi ẩn tự do sẽ tạo ra một vector trong cơ sở
     basis_vectors = []
     for f_var in free_vars:
@@ -124,7 +128,7 @@ def back_substitution(U, c):
     n = len(U)
     x = [0] * n # Khởi tạo nghiệm ban đầu là 0
     
-    for i in range(n - 1, -1, -1): # Tìm nghiệm của từng biến, duyệt từ trên xuống dưới
+    for i in range(n - 1, -1, -1): # Tìm nghiệm của từng biến, duyệt từ dưới lên trên
         if abs(U[i][i]) < 1e-12:
             continue
         
@@ -158,6 +162,10 @@ def determinant(A):
 # Hàm tìm ma trận nghịch đảo
 def inverse(A):
     n = len(A)
+    m = len(A[0])
+    if(n != m):
+        return "Ma trận không có nghịch đảo"
+        
     # Tạo ma trận đơn vị I
     I = [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
     
@@ -214,13 +222,13 @@ def verify_solution(A, x, b):
     b_np = np.array(b, dtype=float).flatten()
     
     # Đặt sai số cho phép tính vì tính toán trong máy sẽ có sai số
-    EPSILON = 1e-6
+    epsilon = 1e-6
     
     # tính A.x với toán tử nhân @ trong Numpy
     Ax = A_np @ x_np
     
     # Trả về phép so sánh A.x = b với sai số là 10^-6
-    return np.allclose(Ax, b_np, atol=EPSILON)
+    return np.allclose(Ax, b_np, atol=epsilon)
 
 # Hàm biểu diễn testcase
 def print_test_case(name, A, b, result_tuple):
@@ -284,38 +292,106 @@ def print_test_case(name, A, b, result_tuple):
     
     print("-" * 50)
 
-# Hàm nhập ma trận
-def input_matrix():
-    print("\n------NHẬP MA TRẬN------")
-    try:
-        n = int(input("Nhập số hàng (n): "))
-        m = int(input("Nhập số cột (m): "))
-        
-        A = []
-        print(f"Nhập từng hàng của ma trận (Các phần tử cách nhau bởi dấu cách):")
-        for i in range(n):
-            while True:
-                line = input(f"  Hàng {i+1}: ").split()
-                if len(line) == m:
-                    A.append([float(x) for x in line])
-                    break
-                print(f"Lỗi: Bạn phải nhập đúng {m} số. Vui lòng nhập lại hàng {i+1}.")
-        
-        print("\nNhập vector b (Các phần tử cách nhau bởi dấu cách):")
-        while True:
-            line = input("  b = ").split()
-            if len(line) == n:
-                b = [float(x) for x in line]
-                break
-            print(f"Lỗi: Vector b phải có {n} phần tử.")
-            
-        return A, b
-    except ValueError:
-        print("Lỗi: Vui lòng chỉ nhập các chữ số.")
-        return None, None
-    
 # Hàm main (chạy testcase)
 if __name__ == "__main__":
-    A, b = input_matrix()
-    result = solver(A, b)
-    print_test_case("Kết quả", A, b, result)
+    test_cases = [
+        {
+            "name": "Test 1",
+            "A": [
+                [2.0, -1.0, 1.0],
+                [3.0, 3.0, 9.0],
+                [3.0, 3.0, 5.0],
+            ],
+            "b": [2.0, -1.0, 4.0],
+        },
+        {
+            "name": "Test 2",
+            "A": [
+                [1.0, 1.0, 1.0],
+                [2.0, 2.0, 2.0],
+                [1.0, 1.0, 1.0],
+            ],
+            "b": [1.0, 2.0, 3.0],
+        },
+        {
+            "name": "Test 3",
+            "A": [
+                [1.0, 2.0, -1.0],
+                [2.0, 4.0, -2.0],
+                [3.0, 6.0, -3.0],
+            ],
+            "b": [3.0, 6.0, 9.0],
+        },
+        {
+            "name": "Test 4",
+            "A": [
+                [1.0, 2.0, 3.0],
+                [2.0, 4.0, 6.0],
+                [1.0, 1.0, 1.0],
+            ],
+            "b": [6.0, 12.0, 3.0],
+        },
+        {
+            "name": "Test 5",
+            "A": [
+                [4.0, -2.0],
+                [1.0, 3.0],
+            ],
+            "b": [10.0, 5.0],
+        },
+        {
+            "name": "Test 6",
+            "A": [
+                [0.0, 2.0, -1.0],
+                [3.0, 0.0, 4.0],
+                [5.0, -2.0, 0.0],
+            ],
+            "b": [1.0, 7.0, -3.0],
+        },
+        {
+            "name": "Test 7",
+            "A": [
+                [1.0, 2.0, 3.0, 4.0],
+                [2.0, 4.0, 6.0, 8.0],
+                [0.0, 1.0, 1.0, 1.0],
+                [1.0, 3.0, 4.0, 5.0],
+            ],
+            "b": [10.0, 20.0, 3.0, 13.0],
+        },
+        {
+            "name": "Test 8",
+            "A": [
+                [1.0, 1.0, 1.0, 1.0],
+                [2.0, 3.0, 5.0, 7.0],
+                [4.0, 9.0, 25.0, 49.0],
+                [8.0, 27.0, 125.0, 343.0],
+            ],
+            "b": [4.0, 17.0, 87.0, 503.0],
+        },
+        {
+            "name": "Test 9",
+            "A": [
+                [1.0, -2.0, 1.0, 0.0],
+                [2.0, -4.0, 2.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+            "b": [0.0, 1.0, 2.0],
+        },
+        {
+            "name": "Test 10",
+            "A": [
+                [10.0, -7.0, 0.0, 1.0, -3.0],
+                [-3.0, 2.0, 6.0, 2.0, 1.0],
+                [5.0, -1.0, 5.0, -1.0, 4.0],
+                [2.0, 3.0, -2.0, 8.0, -5.0],
+                [1.0, 0.0, 4.0, -2.0, 7.0],
+            ],
+            "b": [8.0, 3.0, 7.0, -4.0, 10.0],
+        },
+    ]
+
+    for test in test_cases:
+        A = test["A"]
+        b = test["b"]
+        result = solver(A, b)
+        print_test_case(test["name"], A, b, result)
