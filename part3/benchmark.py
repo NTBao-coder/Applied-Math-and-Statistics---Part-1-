@@ -18,7 +18,7 @@ from scipy.linalg import hilbert
 
 # Import solvers
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from solvers import solve_gauss, solve_lu, solve_gauss_seidel, condition_number
+from solvers import solve_gauss, solve_cholesky, solve_gauss_seidel, condition_number
 
 
 # ===========================================================================
@@ -78,7 +78,7 @@ def run_time_benchmark(sizes=None, n_runs=5):
     results = {
         'sizes': sizes,
         'gauss': {'times': [], 'stds': [], 'residuals': []},
-        'lu': {'times': [], 'stds': [], 'residuals': []},
+        'cholesky': {'times': [], 'stds': [], 'residuals': []},
         'gauss_seidel': {'times': [], 'stds': [], 'residuals': []},
     }
 
@@ -94,7 +94,7 @@ def run_time_benchmark(sizes=None, n_runs=5):
 
         # Tạo ma trận ngẫu nhiên MỘT LẦN cho mỗi n
         np.random.seed(42 + n)
-        A = generate_diag_dominant(n)  # Chéo trội để GS hội tụ
+        A = generate_random_spd(n)  # SPD để đảm bảo GS hội tụ và Cholesky hoạt động
         x_true = np.random.randn(n)
         b = A @ x_true
 
@@ -112,19 +112,19 @@ def run_time_benchmark(sizes=None, n_runs=5):
             results['gauss']['stds'].append(float('nan'))
             results['gauss']['residuals'].append(float('nan'))
 
-        # --- LU ---
+        # --- Cholesky ---
         try:
-            t_mean, t_std, x_lu = timeit(solve_lu, A, b, n_runs=n_runs)
-            res = relative_residual(A, x_lu, b)
-            results['lu']['times'].append(t_mean)
-            results['lu']['stds'].append(t_std)
-            results['lu']['residuals'].append(res)
-            print(f"    LU:            {t_mean:.4f}s ± {t_std:.4f}s  |  residual = {res:.2e}")
+            t_mean, t_std, x_chol = timeit(solve_cholesky, A, b, n_runs=n_runs)
+            res = relative_residual(A, x_chol, b)
+            results['cholesky']['times'].append(t_mean)
+            results['cholesky']['stds'].append(t_std)
+            results['cholesky']['residuals'].append(res)
+            print(f"    Cholesky:      {t_mean:.4f}s ± {t_std:.4f}s  |  residual = {res:.2e}")
         except Exception as e:
-            print(f"    LU: FAILED ({e})")
-            results['lu']['times'].append(float('nan'))
-            results['lu']['stds'].append(float('nan'))
-            results['lu']['residuals'].append(float('nan'))
+            print(f"    Cholesky: FAILED ({e})")
+            results['cholesky']['times'].append(float('nan'))
+            results['cholesky']['stds'].append(float('nan'))
+            results['cholesky']['residuals'].append(float('nan'))
 
         # --- Gauss-Seidel ---
         try:
@@ -160,11 +160,11 @@ def plot_loglog(results, save_path="benchmark_loglog.png"):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
     # --- Plot 1: Thời gian ---
-    colors = {'gauss': '#e74c3c', 'lu': '#3498db', 'gauss_seidel': '#2ecc71'}
-    labels = {'gauss': 'Gauss Elimination', 'lu': 'LU Decomposition', 'gauss_seidel': 'Gauss-Seidel'}
-    markers = {'gauss': 'o', 'lu': 's', 'gauss_seidel': '^'}
+    colors = {'gauss': '#e74c3c', 'cholesky': '#3498db', 'gauss_seidel': '#2ecc71'}
+    labels = {'gauss': 'Gauss Elimination', 'cholesky': 'Cholesky Decomposition', 'gauss_seidel': 'Gauss-Seidel'}
+    markers = {'gauss': 'o', 'cholesky': 's', 'gauss_seidel': '^'}
 
-    for method in ['gauss', 'lu', 'gauss_seidel']:
+    for method in ['gauss', 'cholesky', 'gauss_seidel']:
         times = np.array(results[method]['times'])
         mask = ~np.isnan(times)
         if mask.any():
@@ -192,7 +192,7 @@ def plot_loglog(results, save_path="benchmark_loglog.png"):
     ax1.grid(True, alpha=0.3)
 
     # --- Plot 2: Sai số ---
-    for method in ['gauss', 'lu', 'gauss_seidel']:
+    for method in ['gauss', 'cholesky', 'gauss_seidel']:
         residuals = np.array(results[method]['residuals'])
         mask = ~np.isnan(residuals)
         if mask.any():
@@ -230,8 +230,8 @@ def stability_analysis(save_path="stability_analysis.png"):
 
     sizes = [3, 5, 7, 10, 12, 15]
 
-    hilbert_data = {'sizes': sizes, 'cond': [], 'err_gauss': [], 'err_lu': []}
-    spd_data = {'sizes': sizes, 'cond': [], 'err_gauss': [], 'err_lu': []}
+    hilbert_data = {'sizes': sizes, 'cond': [], 'err_gauss': [], 'err_cholesky': []}
+    spd_data = {'sizes': sizes, 'cond': [], 'err_gauss': [], 'err_cholesky': []}
 
     for n in sizes:
         print(f"\n  n = {n}:")
@@ -253,13 +253,13 @@ def stability_analysis(save_path="stability_analysis.png"):
         hilbert_data['err_gauss'].append(err_g)
 
         try:
-            x_lu = solve_lu(H, b_h)
-            err_l = np.linalg.norm(x_lu - x_true) / np.linalg.norm(x_true)
+            x_chol = solve_cholesky(H, b_h)
+            err_c = np.linalg.norm(x_chol - x_true) / np.linalg.norm(x_true)
         except Exception:
-            err_l = float('nan')
-        hilbert_data['err_lu'].append(err_l)
+            err_c = float('nan')
+        hilbert_data['err_cholesky'].append(err_c)
 
-        print(f"    Hilbert:  κ = {kappa_h:.2e}  |  err_Gauss = {err_g:.2e}  |  err_LU = {err_l:.2e}")
+        print(f"    Hilbert:  κ = {kappa_h:.2e}  |  err_Gauss = {err_g:.2e}  |  err_Chol = {err_c:.2e}")
 
         # --- Random SPD ---
         A_spd = generate_random_spd(n)
@@ -276,13 +276,13 @@ def stability_analysis(save_path="stability_analysis.png"):
         spd_data['err_gauss'].append(err_g)
 
         try:
-            x_lu = solve_lu(A_spd, b_spd)
-            err_l = np.linalg.norm(x_lu - x_true) / np.linalg.norm(x_true)
+            x_chol = solve_cholesky(A_spd, b_spd)
+            err_c = np.linalg.norm(x_chol - x_true) / np.linalg.norm(x_true)
         except Exception:
-            err_l = float('nan')
-        spd_data['err_lu'].append(err_l)
+            err_c = float('nan')
+        spd_data['err_cholesky'].append(err_c)
 
-        print(f"    SPD:      κ = {kappa_s:.2e}  |  err_Gauss = {err_g:.2e}  |  err_LU = {err_l:.2e}")
+        print(f"    SPD:      κ = {kappa_s:.2e}  |  err_Gauss = {err_g:.2e}  |  err_Chol = {err_c:.2e}")
 
     # --- Vẽ đồ thị ---
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
@@ -305,12 +305,12 @@ def stability_analysis(save_path="stability_analysis.png"):
     axes[1].legend()
     axes[1].grid(True, alpha=0.3)
 
-    # Plot 3: Sai số LU
-    axes[2].semilogy(sizes, hilbert_data['err_lu'], 'r-o', label='Hilbert', linewidth=2)
-    axes[2].semilogy(sizes, spd_data['err_lu'], 'b-s', label='Random SPD', linewidth=2)
+    # Plot 3: Sai số Cholesky
+    axes[2].semilogy(sizes, hilbert_data['err_cholesky'], 'r-o', label='Hilbert', linewidth=2)
+    axes[2].semilogy(sizes, spd_data['err_cholesky'], 'b-s', label='Random SPD', linewidth=2)
     axes[2].set_xlabel('Kích thước n')
     axes[2].set_ylabel('Sai số tương đối')
-    axes[2].set_title('Sai Số LU Decomposition', fontweight='bold')
+    axes[2].set_title('Sai Số Cholesky Decomposition', fontweight='bold')
     axes[2].legend()
     axes[2].grid(True, alpha=0.3)
 
@@ -333,19 +333,19 @@ def print_summary_table(results):
     print("  BẢNG TỔNG HỢP KẾT QUẢ")
     print("=" * 85)
 
-    header = f"{'n':>6} | {'Gauss (s)':>12} | {'LU (s)':>12} | {'GS (s)':>12} | {'Res_G':>10} | {'Res_LU':>10} | {'Res_GS':>10}"
+    header = f"{'n':>6} | {'Gauss (s)':>12} | {'Chol (s)':>12} | {'GS (s)':>12} | {'Res_G':>10} | {'Res_Chol':>10} | {'Res_GS':>10}"
     print(header)
     print("-" * 85)
 
     for i, n in enumerate(results['sizes']):
         tg = results['gauss']['times'][i]
-        tl = results['lu']['times'][i]
+        tc = results['cholesky']['times'][i]
         tgs = results['gauss_seidel']['times'][i]
         rg = results['gauss']['residuals'][i]
-        rl = results['lu']['residuals'][i]
+        rc = results['cholesky']['residuals'][i]
         rgs = results['gauss_seidel']['residuals'][i]
 
-        print(f"{n:>6} | {tg:>12.4f} | {tl:>12.4f} | {tgs:>12.4f} | {rg:>10.2e} | {rl:>10.2e} | {rgs:>10.2e}")
+        print(f"{n:>6} | {tg:>12.4f} | {tc:>12.4f} | {tgs:>12.4f} | {rg:>10.2e} | {rc:>10.2e} | {rgs:>10.2e}")
 
     print("=" * 85)
 

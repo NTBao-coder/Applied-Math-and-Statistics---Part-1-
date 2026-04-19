@@ -2,10 +2,17 @@
 solvers.py — Các phương pháp giải hệ Ax = b
 Gồm:
   1. Gauss elimination (trực tiếp)
-  2. LU solver (trực tiếp, dùng LU từ Part 2)
+  2. Cholesky solver (trực tiếp, dùng Cholesky từ Part 2)
   3. Gauss-Seidel (phương pháp lặp)
 
-Mỗi phương pháp có kiểm chứng bằng NumPy.
+Mỗi phương pháp có implement và kiểm chứng bằng numpy để tối ưu hóa thời gian chạy. 
+Giải thích ở testcase n = 1000.
+Với Phương pháp Khử Gauss (Gauss Elimination): 
+- Mặc dù thuật toán có độ phức tạp là $\mathcal{O}(n^3)$, nhưng trong solve_gauss, 
+dòng code quan trọng nhất đã được vector hóa (vectorization) bằng numpy.
+- Với Phương pháp Cholesky (Trực tiếp): Thuật toán phân rã cholesky_decomposition ở Part 2 được viết bằng thuần Python thông qua các vòng lặp lồng nhau hoàn toàn (không vector hóa qua NumPy). 
+Do đó, phương pháp này sẽ tốn nhiều thời gian nhất (~20 giây) vì Python phải thực hiện từng phép 
+cộng trừ nhân chia một cách tuyến tính, tuy nhiên vẫn đảm bảo sai số của Cholesky thu được.
 """
 
 import numpy as np
@@ -14,7 +21,7 @@ import os
 
 # Import từ Part 2
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'part2'))
-from decomposition import lu_decomposition
+from decomposition import cholesky_decomposition
 
 
 # ===========================================================================
@@ -69,41 +76,43 @@ def solve_gauss(A, b):
     return x
 
 
+
+
+
 # ===========================================================================
-# 2. LU Solver
+# 2.Cholesky Solver
 # ===========================================================================
 
-def solve_lu(A, b):
+def solve_cholesky(A, b):
     """
-    Giải Ax = b bằng phân rã LU.
+    Giải Ax = b bằng phân rã Cholesky.
     
-    Input:  A ∈ R^{n×n}, b ∈ R^n
+    Input:  A ∈ R^{n×n} (SPD), b ∈ R^n
     Output: x ∈ R^n
     
     Thuật toán:
-        1. Phân rã PA = LU
-        2. Giải Ly = Pb (forward substitution)
-        3. Giải Ux = y (back substitution)
+        1. Phân rã A = L * L^T
+        2. Giải Ly = b (forward substitution)
+        3. Giải L^T x = y (back substitution)
     """
     A = np.array(A, dtype=float)
     b = np.array(b, dtype=float).flatten()
     n = A.shape[0]
 
-    # Phân rã LU
-    P, L, U = lu_decomposition(A)
+    # Phân rã Cholesky
+    L_list = cholesky_decomposition(A.tolist())
+    L = np.array(L_list)
+    LT = L.T
 
-    # Pb
-    Pb = P @ b
-
-    # Forward substitution: Ly = Pb
+    # Forward substitution: Ly = b
     y = np.zeros(n)
     for i in range(n):
-        y[i] = Pb[i] - np.dot(L[i, :i], y[:i])
+        y[i] = (b[i] - np.dot(L[i, :i], y[:i])) / L[i, i]
 
-    # Back substitution: Ux = y
+    # Back substitution: L^T x = y
     x = np.zeros(n)
     for i in range(n - 1, -1, -1):
-        x[i] = (y[i] - np.dot(U[i, i+1:n], x[i+1:n])) / U[i, i]
+        x[i] = (y[i] - np.dot(LT[i, i+1:n], x[i+1:n])) / LT[i, i]
 
     return x
 
@@ -277,13 +286,16 @@ def run_all_tests():
     b5 = np.array([1, 2, 3], dtype=float)
     verify_solver(solve_gauss, A5, b5, "Gauss Pivoting")
 
-    # --- LU Solver ---
-    print("\n--- LU Solver ---")
-    verify_solver(solve_lu, A1, b1, "LU 3×3")
-    verify_solver(solve_lu, A2, b2, "LU 4×4")
-    verify_solver(solve_lu, np.eye(3), np.array([1, 2, 3.0]), "LU Identity")
-    verify_solver(solve_lu, A4, b4, "LU Random 5×5")
-    verify_solver(solve_lu, A5, b5, "LU Pivoting")
+
+
+    # --- Cholesky Solver ---
+    print("\n--- Cholesky Solver ---")
+    # Tạo ma trận SPD cho test
+    M_chol = np.random.randn(4, 4)
+    A_chol = M_chol @ M_chol.T + np.eye(4)
+    b_chol = np.random.randn(4)
+    verify_solver(solve_cholesky, A_chol, b_chol, "Cholesky SPD 4×4")
+    verify_solver(solve_cholesky, np.eye(3), np.array([1, 2, 3.0]), "Cholesky Identity")
 
     # --- Gauss-Seidel ---
     print("\n--- Gauss-Seidel ---")

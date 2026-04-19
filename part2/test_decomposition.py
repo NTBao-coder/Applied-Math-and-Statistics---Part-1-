@@ -6,7 +6,7 @@ Description:
 
     Phân loại test cases:
         - Tests 1-5 : Kiểm tra tính đúng đắn (Correctness Tests)
-        - Tests 6-8 : Kiểm tra các trường hợp biên (Edge Case Tests)
+        - Tests 6-9 : Kiểm tra các trường hợp biên (Edge Case Tests)
 
     Phương pháp kiểm chứng:
         1. So sánh L với kết quả biết trước (hand-calculated)
@@ -291,6 +291,28 @@ def test_8_not_symmetric():
         pass  # Đúng kỳ vọng: hàm đã phát hiện và raise lỗi
     print("TEST 8 PASSED — Phát hiện ma trận không đối xứng")
 
+def test_9_not_square_matrix():
+    """
+    TEST 9 (Edge Case): Ma trận KHÔNG vuông (chữ nhật).
+
+    Input:  A = [[1, 2, 3],
+                 [4, 5, 6]]
+    Vấn đề: Số hàng (2) khác số cột (3).
+    Expect: Hàm phải raise ValueError do không phải ma trận vuông.
+    """
+    A = [[1.0, 2.0, 3.0],
+         [4.0, 5.0, 6.0]]
+
+    try:
+        cholesky_decomposition(A)
+        # Nếu chạy tới đây mà không raise -> test FAIL
+        assert False, "Không raise ValueError cho ma trận chữ nhật!"
+    except ValueError as e:
+        # Tùy chọn: có thể in ra thông báo lỗi để kiểm tra câu chữ
+        # print(f"  [Đúng kỳ vọng] Bắt được lỗi: {e}")
+        pass
+    print("TEST 9 PASSED — Phát hiện ma trận không vuông")
+
 
 # =============================================================================
 # Chạy tất cả test cases và tổng hợp kết quả
@@ -310,6 +332,7 @@ if __name__ == "__main__":
         test_6_not_positive_definite,
         test_7_diagonal_matrix,
         test_8_not_symmetric,
+        test_9_not_square_matrix,
     ]
 
     # Bộ đếm kết quả

@@ -1,0 +1,205 @@
+import json
+
+notebook = {
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Báo cáo: Giải Hệ Phương Trình và Phân Tích Hiệu Năng (Phần 3)\n",
+    "\n",
+    "Trong phần này, chúng ta sẽ thực hiện giải hệ phương trình tuyến tính $A\\mathbf{x} = \\mathbf{b}$ bằng 3 phương pháp khác nhau:\n",
+    "1. **Khử Gauss (Gauss Elimination)**: Phương pháp giải trực tiếp với *partial pivoting*.\n",
+    "2. **Phân rã Cholesky**: Phương pháp giải trực tiếp dành cho ma trận đối xứng xác định dương (SPD).\n",
+    "3. **Lặp Gauss-Seidel**: Phương pháp giải lặp, hội tụ khi ma trận chéo trội chặt hoặc SPD.\n",
+    "\n",
+    "Các tiêu chí phân tích bao gồm thời gian chạy, sai số tương đối và độ ổn định của từng thuật toán."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 1. Import Thư Viện và Các Hàm Solver\n",
+    "Chúng ta import các hàm từ file `solvers.py` và `benchmark.py` đã triển khai."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "from scipy.linalg import hilbert\n",
+    "\n",
+    "# Import từ file trong project\n",
+    "from solvers import solve_gauss, solve_cholesky, solve_gauss_seidel, condition_number\n",
+    "from benchmark import timeit, relative_residual, generate_random_spd, run_time_benchmark, print_summary_table"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2. Thực Nghiệm Thời Gian và Độ Phức Tạp (Benchmark)\n",
+    "Chúng ta sẽ thực hiện benchmark với kích thước ma trận $n \\in \\{50, 100, 200, 500, 1000\\}$.\n",
+    "Ma trận thử nghiệm là ma trận ngẫu nhiên SPD (đảm bảo cả 3 phương pháp đều có thể giải được)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "sizes = [50, 100, 200, 500, 1000]\n",
+    "results = run_time_benchmark(sizes=sizes, n_runs=5)\n",
+    "print_summary_table(results)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Biểu đồ Thời gian chạy vs Kích thước n (Log-Log)\n",
+    "Biểu đồ so sánh thời gian của các thuật toán với đường tham chiếu độ phức tạp lý thuyết $\\mathcal{O}(n^3)$. Gauss-Seidel do tính hội tụ cực nhanh trên ma trận chéo trội SPD nên tốn ít thời gian nhất, trong khi Gauss và Cholesky có độ dốc tương đồng với $\\mathcal{O}(n^3)$.\n",
+    "\n",
+    "<p align=\"center\">\n",
+    "  <img src=\"benchmark_loglog.png\" alt=\"Benchmark Log-log\" width=\"800\"/>\n",
+    "</p>"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Nhận xét Benchmark\n",
+    "Từ bảng kết quả thực nghiệm với các kích thước ma trận $n \\in \\{50, 100, 200, 500, 1000\\}$, ta có các nhận xét sau:\n",
+    "\n",
+    "1. **Thời gian chạy và độ phức tạp:**\n",
+    "   - **Khử Gauss**: Nhờ việc **vector hóa** vòng lặp bên trong thông qua NumPy, thời gian chạy rất tối ưu. Tại $n=1000$, phương pháp này chỉ mất khoảng **~1.1 đến 1.6 giây**. \n",
+    "   - **Gauss-Seidel**: Do ma trận ngẫu nhiên SPD được tạo ra có tính chéo trội rất mạnh, Gauss-Seidel hội tụ cực kỳ nhanh (chỉ mất ~23 lần lặp cho $n=1000$). Thời gian thực thi là **nhanh nhất**, chỉ tốn khoảng **~0.17 giây**.\n",
+    "   - **Cholesky**: Thuật toán do cài đặt bằng cấu trúc vòng lặp thuần Python (chưa vector hóa) nên thời gian tăng đáng kể. Tại $n=1000$, nó mất khoảng **~21 giây**, chậm hơn so với Gauss nhưng vẫn tuân theo tiệm cận $\\mathcal{O}(n^3)$ trên đồ thị log-log.\n",
+    "\n",
+    "2. **Độ chính xác (Sai số tương đối):**\n",
+    "   - **Khử Gauss và Cholesky**: Đạt độ chính xác toán học rất cao, sai số luôn nằm ở ngưỡng $\\sim 10^{-16}$ (machine epsilon) với mọi kích thước.\n",
+    "   - **Gauss-Seidel**: Dừng lặp khi sai số đạt mức dung sai `tol=1e-10`, nên sai số thực nghiệm luôn xấp xỉ $\\sim 10^{-11}$, hoàn toàn chính xác theo đúng yêu cầu cài đặt."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 3. Phân Tích Ổn Định Số\n",
+    "Mục đích: Quan sát cách sai số bị khuếch đại khi hệ phương trình có *số điều kiện lớn*.\n",
+    "- **Ma trận Hilbert ($H_n$)**: Rất nhạy với nhiễu (ill-conditioned).\n",
+    "- **Ma trận ngẫu nhiên SPD**: Thường có tính điều kiện tốt hơn (well-conditioned)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "stability_sizes = [3, 5, 7, 10, 12, 15]\n",
+    "\n",
+    "hilbert_data = {'sizes': stability_sizes, 'cond': [], 'err_gauss': [], 'err_cholesky': []}\n",
+    "spd_data = {'sizes': stability_sizes, 'cond': [], 'err_gauss': [], 'err_cholesky': []}\n",
+    "\n",
+    "for n in stability_sizes:\n",
+    "    np.random.seed(42)\n",
+    "    x_true = np.ones(n)\n",
+    "    \n",
+    "    # --- Hilbert ---\n",
+    "    H = hilbert(n)\n",
+    "    b_h = H @ x_true\n",
+    "    kappa_h = condition_number(H)\n",
+    "    hilbert_data['cond'].append(kappa_h)\n",
+    "    \n",
+    "    # Giải bằng Gauss\n",
+    "    try:\n",
+    "        x_g_h = solve_gauss(H, b_h)\n",
+    "        hilbert_data['err_gauss'].append(np.linalg.norm(x_g_h - x_true) / np.linalg.norm(x_true))\n",
+    "    except:\n",
+    "        hilbert_data['err_gauss'].append(float('nan'))\n",
+    "        \n",
+    "    # Giải bằng Cholesky\n",
+    "    try:\n",
+    "        x_c_h = solve_cholesky(H, b_h)\n",
+    "        hilbert_data['err_cholesky'].append(np.linalg.norm(x_c_h - x_true) / np.linalg.norm(x_true))\n",
+    "    except:\n",
+    "        hilbert_data['err_cholesky'].append(float('nan'))\n",
+    "\n",
+    "    # --- Random SPD ---\n",
+    "    A_spd = generate_random_spd(n)\n",
+    "    b_spd = A_spd @ x_true\n",
+    "    kappa_s = condition_number(A_spd)\n",
+    "    spd_data['cond'].append(kappa_s)\n",
+    "    \n",
+    "    try:\n",
+    "        x_g_s = solve_gauss(A_spd, b_spd)\n",
+    "        spd_data['err_gauss'].append(np.linalg.norm(x_g_s - x_true) / np.linalg.norm(x_true))\n",
+    "    except:\n",
+    "        spd_data['err_gauss'].append(float('nan'))\n",
+    "        \n",
+    "    try:\n",
+    "        x_c_s = solve_cholesky(A_spd, b_spd)\n",
+    "        spd_data['err_cholesky'].append(np.linalg.norm(x_c_s - x_true) / np.linalg.norm(x_true))\n",
+    "    except:\n",
+    "        spd_data['err_cholesky'].append(float('nan'))\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Kết quả Biểu đồ Ổn định số\n",
+    "\n",
+    "<p align=\"center\">\n",
+    "  <img src=\"stability_analysis.png\" alt=\"Stability Analysis\" width=\"1000\"/>\n",
+    "</p>"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Nhận xét Phân Tích Ổn Định Số và Kết Luận Cuối Cùng\n",
+    "\n",
+    "**1. Phân Tích Ma Trận Hilbert ($H_n$) - Hệ điều kiện kém (Ill-conditioned):**\n",
+    "   - **Số điều kiện $\\kappa(A)$**: Tăng cực nhanh theo hàm mũ. Với $n=10$, $\\kappa \\approx 1.6 \\times 10^{13}$. Tại $n=12$, $\\kappa$ tiến tới vô cực (`inf`) vượt qua giới hạn của máy tính.\n",
+    "   - **Độ ổn định của nghiệm**: Tại $n=10$, sai số nghiệm của Gauss và Cholesky đã lên tới $\\sim 10^{-4}$. Khi $n=12$, Gauss trả về `NaN` còn Cholesky sai số cực kỳ lớn ($\\sim 0.41$). Điều này minh họa thực tế rằng: với ma trận Hilbert, sai số làm tròn cực nhỏ từ dữ liệu ban đầu bị **khuếch đại hàng tỷ lần**, làm vỡ hệ thống.\n",
+    "\n",
+    "**2. Phân Tích Ma Trận ngẫu nhiên SPD - Hệ điều kiện tốt (Well-conditioned):**\n",
+    "   - Số điều kiện $\\kappa(A)$ luôn duy trì ở mức cực kỳ ổn định ($\\sim 3.0$ đến $4.4$) bất chấp kích thước $n$ tăng dần.\n",
+    "   - Sai số tương đối của cả phương pháp Gauss và Cholesky luôn ổn định ở mức sát giới hạn máy tính ($\\sim 10^{-16}$). Hệ thống giải vô cùng trơn tru và chính xác.\n",
+    "\n",
+    "**🌟 KẾT LUẬN CUỐI CÙNG:**\n",
+    "Thông qua toàn bộ các thực nghiệm, chúng ta rút ra các kết luận quan trọng sau:\n",
+    "1. **Hiệu năng lập trình rất quan trọng**: Dù thuật toán có cùng độ phức tạp toán học $\\mathcal{O}(n^3)$, nhưng khi thực thi thực tế, việc sử dụng các phép toán Vector hóa (như Gauss dùng NumPy) cho tốc độ vượt trội hơn hẳn so với việc tính toán tuần tự bằng các vòng lặp lồng nhau (như Cholesky thuần Python).\n",
+    "2. **Thuật toán đúng là chưa đủ**: Trong máy tính, sai số làm tròn số thực (Floating point) là không thể tránh khỏi. Nếu hệ phương trình rơi vào trường hợp số điều kiện lớn (như ma trận Hilbert), thì một thuật toán hoàn hảo về mặt lý thuyết vẫn sẽ trả về kết quả sai lệch hoàn toàn.\n",
+    "3. **Tầm quan trọng của phương pháp Lặp**: Phương pháp Gauss-Seidel có ưu thế cực lớn với các hệ ma trận đặc biệt, đặc biệt là hệ chéo trội. Nó giúp ta tính ra nghiệm hội tụ trong khoảng thời gian cực kỳ nhỏ, tiết kiệm chi phí hơn hẳn phương pháp giải trực tiếp."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "name": "python",
+   "version": "3.10.4"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
+
+with open("analysis.ipynb", "w", encoding="utf-8") as f:
+    json.dump(notebook, f, ensure_ascii=False, indent=1)
+print("Saved analysis.ipynb")
