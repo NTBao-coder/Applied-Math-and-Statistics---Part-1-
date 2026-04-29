@@ -180,8 +180,172 @@ Thông qua việc thực hiện bài tập lớn này, nhóm chúng em không ch
 Bên cạnh đó, bài báo cáo này cũng không tránh khỏi những thiếu sót do hạn chế về kinh nghiệm và thời gian thực hiện. Vì vậy, nhóm rất mong nhận được những ý kiến đóng góp từ thầy cô và các bạn để có thể hoàn thiện hơn trong những lần thực hiện sau.
 
 \chapter{Phép khử Gauss và Các Ứng Dụng}
-Phần này sẽ giải thích sơ lược về code và các thuật toán được sử dụng trong từng đoạn code.
-\section[gaussian\_eliminate(A, b)]{\texttt{gaussian\_eliminate(A, b)}}
+\section{Cơ Sở Lý Thuyết}
+
+\subsection{Ma trận Dạng bậc thang (REF) và Dạng bậc thang rút gọn (RREF)}
+
+\textbf{Định nghĩa:}
+
+\begin{itemize}
+    \item Một ma trận gọi là \textbf{REF} nếu thỏa mãn các tính chất sau:
+    \begin{enumerate}
+        \item Tất cả các hàng chỉ chứa số 0 (nếu có) phải nằm ở dưới cùng của ma trận.
+        \item Phần tử khác 0 đầu tiên của mỗi hàng (gọi là \textbf{pivot}) phải nằm ở bên phải của phần tử trụ của hàng ngay phía trên nó.
+        \item Tất cả các phần tử nằm bên dưới một pivot phải bằng 0.
+    \end{enumerate}
+
+    \item Một ma trận gọi là \textbf{RREF} nếu thỏa mãn các tính chất sau:
+    \begin{enumerate}
+        \item Nó là một ma trận \textbf{REF}.
+        \item Pivot của mỗi hàng phải là số 1.
+        \item Mọi phần tử nằm \textbf{phía trên} và \textbf{phía dưới} của pivot phải bằng 0.
+    \end{enumerate}
+\end{itemize}
+
+Ma trận \textbf{REF} thường thu được sau phép khử Gauss, trong khi đó ma trận \textbf{RREF} thường thu được sau phép khử Gauss--Jordan.
+
+\vspace*{0.2cm}
+\subsection{Kĩ thuật chọn Partial Pivoting trong phép khử Gauss}
+Trước khi thực hiện bất kỳ bước khử nào, chúng ta cần chọn pivot nhằm tránh việc chia cho số quá nhỏ (gây sai số làm tròn nghiêm trọng) hoặc chia cho 0.
+
+\textbf{Quy trình thực hiện tại cột $j$ (đang xét hàng $i$):}
+\begin{enumerate}
+    \item Tìm phần tử có giá trị tuyệt đối lớn nhất trong cột $j$, từ hàng $i$ trở xuống:
+    \[
+    \max_{k=i \dots n} |a_{kj}|
+    \]
+    \item Hoán đổi hàng hiện tại ($i$) với hàng chứa phần tử lớn nhất đó ($k$).
+    \item Tiếp tục quá trình khử.
+\end{enumerate}
+
+\subsection{Phương pháp khử Gauss}
+
+Mục tiêu là đưa ma trận hệ số $A$ về dạng ma trận tam giác trên (Upper Triangular Matrix) bằng các phép biến đổi hàng sơ cấp.
+
+\vspace*{0.1cm}
+\textbf{Các bước thực hiện:}
+\begin{enumerate}
+    \item \textbf{Forward Elimination (Khử xuôi):}
+    Với mỗi cột từ $1$ đến $n-1$:
+    \begin{itemize}
+        \item Thực hiện \textbf{Partial Pivoting}.
+        \item Khử các phần tử nằm dưới đường chéo chính để đưa về $0$.
+    \end{itemize}
+    \item \textbf{Back Substitution (Thế ngược):}
+    \begin{itemize}
+        \item Tính $x_n = \dfrac{b'_n}{a'_{nn}}$.
+        \item Thế $x_n$ vào phương trình phía trên để tìm $x_{n-1}$, tiếp tục như vậy ngược lên trên cho đến $x_1$.
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Phương pháp khử Gauss--Jordan}
+Đây là phiên bản mở rộng của phép khử Gauss, đưa ma trận về dạng ma trận bậc thang rút gọn.
+
+\begin{itemize}
+    \item Tương tự như khử Gauss, nhưng sau khi khử các phần tử dưới đường chéo, ta chia cả hàng cho phần tử chốt để đưa phần tử trên đường chéo về $1$.
+    
+    \item Thay vì chỉ dừng lại ở ma trận tam giác trên, ta tiếp tục khử các phần tử \textbf{nằm phía trên} đường chéo chính để đưa chúng về $0$.
+\end{itemize}
+
+\subsection{Tính định thức qua Phép khử Gauss}
+
+Sau khi đã đưa ma trận $A$ về REF (bây giờ là ma trận $U$), ta có thể tính định thức của ma trận này bằng công thức:
+
+\[
+\det(A)=(-1)^s \cdot \prod_{i=1}^{n} U_{ii}
+\]
+
+Trong đó:
+
+\begin{itemize}
+    \item $s$: số lần hoán đổi dòng.
+    \item $U_{ii}$: các phần tử nằm trên đường chéo chính của ma trận $U$.
+\end{itemize}
+
+\subsection{Tìm ma trận nghịch đảo}
+
+\textbf{Định lý:} Ma trận $A \in \mathbb{R}^{n \times n}$ khả nghịch khi và chỉ khi $\det(A) \neq 0$.
+
+Ta có thể tìm $A^{-1}$ bằng cách tạo ma trận tăng cường:
+
+\[
+M = [A \mid I]
+\]
+
+Sau đó, thực hiện khử Gauss--Jordan cho ma trận $A$ để đưa về:
+
+\[
+M' = [I \mid B]
+\]
+
+Khi đó, ma trận $B$ chính là nghịch đảo của $A$, tức là:
+
+\[
+B = A^{-1}
+\]
+
+\subsection{Hạng và cơ sở của ma trận}
+
+\begin{enumerate}
+    \item \textbf{Hạng (rank):} là số lượng hàng độc lập tuyến tính (hoặc số lượng cột độc lập tuyến tính) của ma trận đó, bằng số dòng khác $0$ trong dạng REF của $A$, hoặc bằng số cột pivot.
+
+    \item \textbf{Không gian cột (Column Space):} là tập hợp tất cả các tổ hợp tuyến tính của các cột của ma trận $A$, có số chiều bằng $\operatorname{rank}(A)$. Không gian cột thu được bằng cách:
+    
+    \begin{itemize}
+        \item Đưa ma trận về RREF.
+        \item Xác định các vị trí của các cột chứa pivot.
+        \item Lấy các cột của ma trận $A$, tương ứng với các vị trí đã chọn được.
+    \end{itemize}
+
+    \item \textbf{Không gian dòng (Row Space):} là tập hợp tất cả các tổ hợp tuyến tính của các hàng của ma trận $A$, cũng có số chiều bằng $\operatorname{rank}(A)$; thu được bằng cách lấy các hàng khác $0$ của ma trận REF (hoặc RREF).
+
+    \item \textbf{Không gian nghiệm (Null Space):} là tập hợp tất cả các vector $\mathbf{x}$ thỏa mãn phương trình thuần nhất:
+    
+    \[
+    A\mathbf{x} = \mathbf{0}
+    \]
+
+    Không gian nghiệm thu được bằng cách giải hệ phương trình:
+
+    \[
+    A\mathbf{x} = \mathbf{0}
+    \]
+\end{enumerate}
+
+\subsection{Nghiệm của một hệ phương trình}
+
+Nếu hệ phương trình $A\mathbf{x} = \mathbf{b}$ có nghiệm, nghiệm này có thể được biểu diễn dưới dạng:
+
+\[
+\mathbf{x} = \mathbf{x}_p + \mathbf{x}_n
+\]
+
+Trong đó:
+
+\begin{itemize}
+    \item \textbf{$\mathbf{x}_p$ (Nghiệm riêng -- Particular):} là một nghiệm cụ thể của hệ, thu được bằng cách gán cho tất cả các biến tự do bằng $0$.
+    
+    \item \textbf{$\mathbf{x}_n$ (Nghiệm thuần nhất -- Null Space Solution):} là tập hợp tất cả các nghiệm của hệ $A\mathbf{x} = \mathbf{0}$. Đây chính là tổ hợp tuyến tính của các vector cơ sở của không gian nghiệm:
+    
+    \[
+    \mathbf{x}_n = c_1\mathbf{v}_1 + c_2\mathbf{v}_2 + \dots + c_k\mathbf{v}_k
+    \]
+\end{itemize}
+
+Nếu phương trình $A\mathbf{x} = \mathbf{b}$ có nghiệm duy nhất, ta sẽ có:
+
+\[
+\mathbf{x}_n = \mathbf{0}
+\]
+
+Suy ra:
+
+\[
+\mathbf{x} = \mathbf{x}_p
+\]
+
+\section{Mô Tả Chi Tiết Tất Cả Các Hàm Trong \texttt{part1.py}}
+\subsection[gaussian\_eliminate(A, b)]{\texttt{gaussian\_eliminate(A, b)}}
 \textbf{Chức năng của hàm:}
 
 Đưa ma trận $A$ về ma trận bậc thang theo phép khử Gauss, sử dụng \textit{Partial Pivoting}.\\ 
@@ -312,7 +476,7 @@ for i in range(pivot_row + 1, n):
 
 \noindent\textbf{Độ phức tạp:} $O(n \cdot m^2)$, với $n, m$ lần lượt là số dòng và số cột của ma trận.
 
-\section[backward\_elimination(M, pivot\_cols)]{\texttt{backward\_elimination(M, pivot\_cols)}}
+\subsection[backward\_elimination(M, pivot\_cols)]{\texttt{backward\_elimination(M, pivot\_cols)}}
 
 \textbf{Chức năng của hàm:}
 
@@ -377,7 +541,7 @@ for k in range(r - 1, -1, -1):
 
 \noindent\textbf{Độ phức tạp:} $O(n \cdot m^2)$, với $n, m$ lần lượt là số dòng và số cột của ma trận.
 
-\section[solve\_infinite\_solutions(M\_rref, pivot\_cols, m\_vars, $\boldsymbol{\epsilon}$ = 1e-12)]{\texttt{solve\_infinite\_solutions(M\_rref, pivot\_cols, m\_vars, $\boldsymbol{\epsilon}$ = 1e-12)}}
+\subsection[solve\_infinite\_solutions(M\_rref, pivot\_cols, m\_vars, $\boldsymbol{\epsilon}$ = 1e-12)]{\texttt{solve\_infinite\_solutions(M\_rref, pivot\_cols, m\_vars, $\boldsymbol{\epsilon}$ = 1e-12)}}
 
 \textbf{Chức năng của hàm:}
 
@@ -461,7 +625,7 @@ for f_var in free_vars:
 \end{enumerate}
 \textbf{Độ phức tạp:} $O(n^2)$ trong trường hợp xấu nhất.
 
-\section[solver(A, b)]{\texttt{solver(A, b)}}
+\subsection[solver(A, b)]{\texttt{solver(A, b)}}
 
 \textbf{Chức năng của hàm:}
 
@@ -542,7 +706,7 @@ return "He phuong trinh co vo so nghiem", M_rref, sol, s
 \end{enumerate}
 \textbf{Độ phức tạp:} $O(n \cdot m^2)$, với $n, m$ lần lượt là số dòng và số cột của ma trận.
 
-\section[back\_substitution(U, c)]{\texttt{back\_substitution(U, c)}}
+\subsection[back\_substitution(U, c)]{\texttt{back\_substitution(U, c)}}
 
 \textbf{Chức năng của hàm:}
 
@@ -599,7 +763,7 @@ for i in range(n - 1, -1, -1):
 \end{enumerate}
 \textbf{Độ phức tạp:} $O(n^2)$, với $n$ là số ẩn của hệ.
 
-\section[determinant(A)]{\texttt{determinant(A)}}
+\subsection[determinant(A)]{\texttt{determinant(A)}}
 
 \textbf{Chức năng của hàm:}
 
@@ -668,7 +832,7 @@ if s % 2 == 1:
 \end{enumerate}
 \textbf{Độ phức tạp:} $O(n^3)$ với $n$ là kích thước ma trận vuông.
 
-\section[inverse(A)]{\texttt{inverse(A)}}
+\subsection[inverse(A)]{\texttt{inverse(A)}}
 
 \textbf{Chức năng của hàm:}
 
@@ -749,7 +913,7 @@ return A_inv
 \end{enumerate}
 \textbf{Độ phức tạp:} $O(n^3)$ với $n$ là kích thước ma trận vuông.
 
-\section[rank\_and\_basis(A)]{\texttt{rank\_and\_basis(A)}}
+\subsection[rank\_and\_basis(A)]{\texttt{rank\_and\_basis(A)}}
 
 \textbf{Chức năng của hàm:}
 
@@ -845,7 +1009,7 @@ solution = solve_infinite_solutions(
 \end{enumerate}
 \textbf{Độ phức tạp:} $O(n \cdot m^2)$ với $n, m$ lần lượt là số dòng và số cột của ma trận.
 
-\section[verify\_solutions(A, x, b)]{\texttt{verify\_solutions(A, x, b)}}
+\subsection[verify\_solutions(A, x, b)]{\texttt{verify\_solutions(A, x, b)}}
 
 \textbf{Chức năng của hàm:}
 
@@ -904,7 +1068,7 @@ return np.allclose(Ax, b_np, atol=epsilon)
 \end{enumerate}
 \textbf{Độ phức tạp:} $O(n \cdot m)$ với $n, m$ lần lượt là số dòng và số cột của ma trận.
 
-\section{Các hàm còn lại}
+\subsection{Các hàm còn lại}
 
 \begin{enumerate}
 
